@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Piano Alimentare</title>
+<style>
+body { font-family: Arial, sans-serif; margin: 0; padding: 16px; }
+.hidden { display: none; }
+button { margin: 4px; padding: 8px 12px; }
+table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+th, td { border: 1px solid #ccc; padding: 6px; text-align: center; }
+th { background: #eee; }
+.summary { margin-top: 12px; font-weight: bold; }
+</style>
+</head>
+
+<body>
+
+<div id="profileScreen">
+<h3>Seleziona profilo</h3>
+<button onclick="selectProfile('sebastiano')">Sebastiano</button>
+<button onclick="selectProfile('federica')">Federica</button>
+</div>
+
+<div id="dayScreen" class="hidden">
+<h3>Seleziona giorno</h3>
+<div id="days"></div>
+</div>
+
+<div id="appScreen" class="hidden">
+<h3 id="title"></h3>
+
+<table>
+<thead>
+<tr>
+<th>✔</th>
+<th>Ricetta</th>
+<th>Carbo</th>
+<th>Prote</th>
+<th>Grassi</th>
+<th>Kcal</th>
+</tr>
+</thead>
+<tbody id="recipeTable"></tbody>
+</table>
+
+<div class="summary" id="summary"></div>
+<button onclick="backToDays()">Cambia giorno</button>
+</div>
+
+<script>
+const recipes = [
+{id:1,name:"15 gr mandorle",c:1.29,p:3,f:7.5,k:85},
+{id:2,name:"Shake latte + proteine",c:12.64,p:33.75,f:0.43,k:189},
+{id:3,name:"Salmone affumicato + panbauletti",c:17.2,p:25,f:16.2,k:315},
+{id:4,name:"Panbauletti + uova",c:17.3,p:23.6,f:17.6,k:322},
+{id:5,name:"Yogurt 5% + frutta",c:42.7,p:19.68,f:10.67,k:346},
+{id:6,name:"Fagioli + tonno + olio",c:31.6,p:41.5,f:11.1,k:392},
+{id:7,name:"Fette biscottate + burro",c:47,p:11,f:20.15,k:413},
+{id:8,name:"Merluzzo + cous cous",c:56,p:41.6,f:3.72,k:424},
+{id:9,name:"Tartare + riso + olio",c:62.6,p:23.7,f:11.53,k:449},
+{id:10,name:"Hamburger + cous cous",c:57.15,p:32.73,f:16.15,k:505},
+{id:11,name:"Pollo + cous cous + olio",c:59,p:49.6,f:14.71,k:567}
+];
+
+const days = ["lunedi","martedi","mercoledi","giovedi","venerdi","sabato","domenica"];
+let profile, day;
+
+function getData(){
+return JSON.parse(localStorage.getItem("mealAppData")) || {sebastiano:{},federica:{}};
+}
+
+function saveData(data){
+localStorage.setItem("mealAppData", JSON.stringify(data));
+}
+
+function selectProfile(p){
+profile=p;
+document.getElementById("profileScreen").classList.add("hidden");
+document.getElementById("dayScreen").classList.remove("hidden");
+const d=document.getElementById("days");
+d.innerHTML="";
+days.forEach(x=>{
+const b=document.createElement("button");
+b.textContent=x;
+b.onclick=()=>selectDay(x);
+d.appendChild(b);
+});
+}
+
+function selectDay(d){
+day=d;
+document.getElementById("dayScreen").classList.add("hidden");
+document.getElementById("appScreen").classList.remove("hidden");
+document.getElementById("title").textContent=profile+" - "+day;
+render();
+}
+
+function render(){
+const data=getData();
+if(!data[profile][day]) data[profile][day]={};
+const tbody=document.getElementById("recipeTable");
+tbody.innerHTML="";
+let tc=0,tp=0,tf=0,tk=0;
+
+recipes.forEach(r=>{
+const tr=document.createElement("tr");
+const chk=document.createElement("input");
+chk.type="checkbox";
+chk.checked=!!data[profile][day][r.id];
+chk.onchange=()=>{
+data[profile][day][r.id]=chk.checked;
+saveData(data);
+render();
+};
+if(chk.checked){
+tc+=r.c; tp+=r.p; tf+=r.f; tk+=r.k;
+}
+tr.innerHTML=`<td></td><td>${r.name}</td><td>${r.c}</td><td>${r.p}</td><td>${r.f}</td><td>${r.k}</td>`;
+tr.children[0].appendChild(chk);
+tbody.appendChild(tr);
+});
+
+document.getElementById("summary").textContent=
+"Totali — Kcal: "+tk+" | Carbo: "+tc+" | Proteine: "+tp+" | Grassi: "+tf;
+}
+
+function backToDays(){
+document.getElementById("appScreen").classList.add("hidden");
+document.getElementById("dayScreen").classList.remove("hidden");
+}
+</script>
+</body>
+</html>
