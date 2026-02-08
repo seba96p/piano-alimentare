@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Piano Alimentare</title>
+
+<style>
+:root{
+  --bg:#eef3ff;
+  --card:#ffffff;
+  --primary:#6c8cff;
+  --text:#1a1a1a;
+}
+
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto;
+  background:var(--bg);
+  margin:0;
+  padding:14px;
+  color:var(--text);
+}
+
+h3{margin:0 0 12px;text-align:center;}
+
+button{
+  padding:12px 18px;
+  margin:6px;
+  border:none;
+  border-radius:14px;
+  background:var(--primary);
+  color:white;
+  font-size:16px;
+}
+
+.card{
+  background:var(--card);
+  border-radius:18px;
+  padding:16px;
+  margin-bottom:16px;
+  box-shadow:0 8px 24px rgba(0,0,0,.08);
+}
+
+.hidden{display:none;}
+
+.recipe-card{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:12px;
+  border-radius:14px;
+  background:#f6f8ff;
+  margin-bottom:10px;
+}
+
+.recipe-info{
+  flex:1;
+  margin-left:10px;
+}
+
+.recipe-name{font-weight:600;font-size:15px;}
+.recipe-macros{font-size:13px;opacity:.8;}
+
+.summary{
+  margin-top:12px;
+  padding:12px;
+  background:#f0f4ff;
+  border-radius:14px;
+  font-weight:600;
+}
+
+textarea{
+  width:100%;
+  min-height:6em;
+  border-radius:14px;
+  border:1px solid #ccc;
+  padding:12px;
+  font-size:15px;
+}
+
+/* Desktop table */
+@media(min-width:768px){
+  .mobile-only{display:none;}
+  table{width:100%;border-collapse:collapse;}
+  th,td{padding:8px;border-bottom:1px solid #ddd;text-align:center;}
+  th{background:#f0f3ff;}
+}
+@media(max-width:767px){
+  .desktop-only{display:none;}
+}
+</style>
+</head>
+
+<body>
+
+<div id="profileScreen" class="card">
+<h3>Seleziona profilo</h3>
+<button onclick="selectProfile('Sebastiano')">Sebastiano</button>
+<button onclick="selectProfile('Federica')">Federica</button>
+</div>
+
+<div id="dayScreen" class="card hidden">
+<h3>Seleziona giorno</h3>
+<div id="days"></div>
+</div>
+
+<div id="appScreen" class="hidden">
+
+<div class="card">
+<h3 id="title"></h3>
+
+<!-- MOBILE -->
+<div id="mobileList" class="mobile-only"></div>
+
+<!-- DESKTOP -->
+<table class="desktop-only">
+<thead>
+<tr>
+<th>✔</th><th>Ricetta</th><th>Carbo</th><th>Prote</th><th>Grassi</th><th>Kcal</th>
+</tr>
+</thead>
+<tbody id="desktopTable"></tbody>
+</table>
+
+<div class="summary" id="summary"></div>
+</div>
+
+<div class="card">
+<h3>Note (valide per tutta la settimana)</h3>
+<textarea id="notes" placeholder="Data, peso, osservazioni..."></textarea>
+</div>
+
+<button onclick="backToDays()">Cambia giorno</button>
+</div>
+
+<script>
+const recipes=[
+{id:1,name:"15 gr mandorle",c:1.29,p:3,f:7.5,k:85},
+{id:2,name:"Shake latte 250gr + proteine 30gr",c:12.64,p:33.75,f:0.43,k:189},
+{id:3,name:"Salmone affumicato 100gr + 2 panbauletti",c:17.2,p:25,f:16.2,k:315},
+{id:4,name:"2 Panbauletti + 3 uova",c:17.3,p:23.6,f:17.6,k:322},
+{id:5,name:"Yogurt 5% 200gr + arancia",c:42.7,p:19.68,f:10.67,k:346},
+{id:6,name:"Fagioli + 2 tonno + olio 10gr",c:31.6,p:41.5,f:11.1,k:392},
+{id:7,name:"4 Fette biscottate + burro",c:47,p:11,f:20.15,k:413},
+{id:8,name:"Merluzzo 200gr + cous cous 80gr",c:56,p:41.6,f:3.72,k:424},
+{id:9,name:"Tartare + riso + olio",c:62.6,p:23.7,f:11.53,k:449},
+{id:10,name:"1 Hamburger + cous cous 80gr",c:57.15,p:32.73,f:16.15,k:505},
+{id:11,name:"Pollo 200gr + cous cous + olio",c:59,p:49.6,f:14.71,k:567},
+{id:12,name:"Albume 250gr + pasta 80gr",c:61,p:40.8,f:18.15,k:570},
+{id:13,name:"Salmone 150gr + riso 80gr",c:62.3,p:35.91,f:25.28,k:620},
+{id:14,name:"Carne macinata 150gr + riso 80gr",c:61.85,p:31.26,f:37.28,k:708},
+{id:15,name:"Orata 200gr + cous cous + olio",c:56,p:49.6,f:22.91,k:635}
+];
+
+const days=["lunedi","martedi","mercoledi","giovedi","venerdi","sabato","domenica"];
+let profile,day;
+
+function getData(){
+  return JSON.parse(localStorage.getItem("mealAppData"))||{Sebastiano:{notes:""},Federica:{notes:""}};
+}
+function saveData(d){localStorage.setItem("mealAppData",JSON.stringify(d));}
+
+function selectProfile(p){
+  profile=p;
+  profileScreen.classList.add("hidden");
+  dayScreen.classList.remove("hidden");
+  daysDiv.innerHTML="";
+  days.forEach(g=>{
+    const b=document.createElement("button");
+    b.textContent=g;
+    b.onclick=()=>selectDay(g);
+    daysDiv.appendChild(b);
+  });
+}
+
+function selectDay(d){
+  day=d;
+  dayScreen.classList.add("hidden");
+  appScreen.classList.remove("hidden");
+  title.textContent=profile+" - "+day;
+  render();
+}
+
+function render(){
+  const data=getData();
+  if(!data[profile][day])data[profile][day]={recipes:{}};
+
+  mobileList.innerHTML="";
+  desktopTable.innerHTML="";
+  let tc=0,tp=0,tf=0,tk=0;
+
+  recipes.forEach(r=>{
+    const checked=!!data[profile][day].recipes[r.id];
+    if(checked){tc+=r.c;tp+=r.p;tf+=r.f;tk+=r.k;}
+
+    /* MOBILE */
+    const card=document.createElement("div");
+    card.className="recipe-card";
+    const chk=document.createElement("input");
+    chk.type="checkbox"; chk.checked=checked;
+    chk.onchange=()=>{data[profile][day].recipes[r.id]=chk.checked;saveData(data);render();};
+    card.innerHTML=`<div class="recipe-info">
+      <div class="recipe-name">${r.name}</div>
+      <div class="recipe-macros">C ${r.c} · P ${r.p} · F ${r.f} · ${r.k} kcal</div>
+    </div>`;
+    card.prepend(chk);
+    mobileList.appendChild(card);
+
+    /* DESKTOP */
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td></td><td>${r.name}</td><td>${r.c}</td><td>${r.p}</td><td>${r.f}</td><td>${r.k}</td>`;
+    tr.children[0].appendChild(chk.cloneNode(true));
+    desktopTable.appendChild(tr);
+  });
+
+  summary.textContent=`Totali — ${tk.toFixed(0)} kcal | C ${tc.toFixed(1)} | P ${tp.toFixed(1)} | F ${tf.toFixed(1)}`;
+  notes.value=data[profile].notes||"";
+  notes.oninput=()=>{data[profile].notes=notes.value;saveData(data);};
+}
+
+function backToDays(){
+  appScreen.classList.add("hidden");
+  dayScreen.classList.remove("hidden");
+}
+
+const profileScreen=document.getElementById("profileScreen");
+const dayScreen=document.getElementById("dayScreen");
+const appScreen=document.getElementById("appScreen");
+const daysDiv=document.getElementById("days");
+const title=document.getElementById("title");
+const mobileList=document.getElementById("mobileList");
+const desktopTable=document.getElementById("desktopTable");
+const summary=document.getElementById("summary");
+const notes=document.getElementById("notes");
+</script>
+
+</body>
+</html>
